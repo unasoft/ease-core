@@ -1,0 +1,4 @@
+id: console
+basePath: '@ej/console'
+vendorPath: !php/const:VENDOR_DIR
+runtimePath: '@protected/runtime/console'
