@@ -1,5 +1,5 @@
 id: site
-basePath: "@protected/app"
+basePath: "@app"
 vendorPath: !php/const:VENDOR_DIR
 runtimePath: '@protected/runtime'
 bootstrap:

@@ -30,8 +30,8 @@ class Boot extends Component
      * @var array
      */
     private $_cacheFile = [
-        'site'    => '@protected/app/config/boot.php',
-        'console' => '@protected/app/console/boot.php'
+        'site'    => '@app/config/boot.php',
+        'console' => '@app/console/boot.php'
     ];
     /**
      * @var array
@@ -39,9 +39,9 @@ class Boot extends Component
     private $_boots = [
         'site'    => [
             '@ej/config/application.yml',
-            '@protected/app/config/application.{yml,php}',
-            '@protected/app/modules/*/registration.{yml,php}',
-            '@protected/app/config/*-local.{yml,php}'
+            '@app/config/application.{yml,php}',
+            '@app/modules/*/registration.{yml,php}',
+            '@app/config/*-local.{yml,php}'
         ],
         'console' => [
             '@ej/console/config/application.yml',
@@ -136,19 +136,20 @@ class Boot extends Component
     }
 
     /**
+     * @param string @class
      * @param array $config
      *
      * @return array
      * @throws InvalidConfigException
      */
-    public function apply(array $config = [])
+    public function apply(string $class, array $config = [])
     {
         try {
             $compiled = $this->compile();
             if (!empty($compiled)) {
-                return ArrayHelper::merge($config, $compiled);
+                $config = ArrayHelper::merge($compiled, $config);
             }
-            return $config;
+            return new $class($config);
         } catch (\Exception $e) {
             throw new InvalidConfigException($e->getMessage());
         }

@@ -25,7 +25,6 @@ class Yii extends \yii\BaseYii
             }
         } elseif (strpos($className, '\\') !== false) {
             $classFile = static::getAlias('@' . str_replace('\\', '/', $className) . '.php', false);
-
             if ($classFile === false || !is_file($classFile)) {
                 $classFile = static::getAlias('@' . str_replace('\\', '/', lcfirst($className)) . '.php', false);
                 if ($classFile === false || !is_file($classFile)) {
