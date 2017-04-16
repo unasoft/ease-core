@@ -15,7 +15,11 @@ components:
     site: ej\base\Site
     request: ej\web\Request
     security: ej\base\Security
-    view: ej\web\View
+    view:
+      class: ej\web\View
+      theme:
+        class: ej\base\Theme
+        basePath: '@app/themes/Site'
     cache: yii\caching\FileCache
     assetManager: ej\web\AssetManager
     urlManager:

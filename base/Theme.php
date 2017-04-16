@@ -2,111 +2,178 @@
 
 namespace ej\base;
 
+
 use Yii;
 use ej\helpers\FileHelper;
+use ej\helpers\ArrayHelper;
+use ej\exceptions\ThemeRender;
+use Symfony\Component\Yaml\Yaml;
 use yii\base\InvalidConfigException;
-use yii\base\InvalidParamException;
 
 class Theme extends \yii\base\Theme
 {
+    const TYPE = 'theme';
     /**
-     * @var array the mapping between view directories and their corresponding themed versions.
-     * This property is used by [[applyTo()]] when a view is trying to apply the theme.
-     * Path aliases can be used when specifying directories.
-     * If this property is empty or not set, a mapping [[Application::basePath]] to [[basePath]] will be used.
-     */
-    public $pathMap;
-    /**
-     * Show exception if view file not exists, default false.
-     *
      * @var bool
      */
-    public $skipOnError = true;
+    public $skipOnError = false;
     /**
-     * Theme name
-     *
+     * @var bool
+     */
+    public $skipYiiOnError = true;
+    /**
      * @var
      */
     private $_name;
 
     /**
-     * @param string $path
-     * @param bool $includeMap
-     * @return string
+     * Theme constructor.
+     *
+     * @param array $config
      */
-    public function applyTo($path, $includeMap = false)
+    public function __construct(array $config = [])
     {
-        if (($themeName = $this->getName()) !== null) {
-            if (($basePath = $this->getBasePath()) === null) {
-                $this->setBasePath('@themes');
-            }
+        parent::__construct($config);
 
-            $pathMap = $this->pathMap;
+        $this->pathMap = [];
+        $this->themeBootstrap();
+    }
 
-            if (empty($pathMap)) {
-                return $path;
-            }
+    /**
+     * @param string $path
+     *
+     * @return string
+     * @throws ThemeRender
+     */
+    public function applyTo($path)
+    {
+        $path = FileHelper::normalizePath($path);
+        $to = implode('/', array_slice(explode('/', $path), -2, 2));
+        $file = $this->getBasePath() . '/' . $to;
 
-            $path = FileHelper::normalizePath($path);
-
-            foreach ($pathMap as $from => $to) {
-                $map = ['from' => $from, 'to' => $to];
-                $from = FileHelper::normalizePath(FileHelper::getAlias($from)) . DIRECTORY_SEPARATOR;
-
-                if (strpos($path, $from) === 0) {
-
-                    $n = strlen($from);
-                    $parts = explode(DIRECTORY_SEPARATOR, substr($path, $n));
-
-                    if (($pos = array_search('views', $parts)) !== false) {
-                        unset($parts[$pos]);
-                    }
-
-                    $filePath = implode('/', $parts);
-
-                    if (is_callable($to)) {
-                        $to = call_user_func_array($to, [$path, $from, $filePath, $themeName]);
-                        if (is_string($to) && !empty($to)) {
-                            $filePath = $to;
-                        } else {
-                            throw new InvalidParamException("Callback function must be return string and not empty.");
-                        }
-                    } else {
-                        $filePath = FileHelper::normalizePath(FileHelper::getAlias($to)) . DIRECTORY_SEPARATOR . $themeName . DIRECTORY_SEPARATOR . $filePath;
-                    }
-
-                    if (is_file($filePath)) {
-                        if ($includeMap === true) {
-                            return array_merge($map, ['file' => $filePath]);
-                        } else {
-                            return $filePath;
-                        }
-                    }
-                }
-            }
-
-            if (isset($filePath) && !$this->skipOnError) {
-                throw new InvalidParamException("The view file does not exist: $filePath");
-            }
+        if (is_file($file)) {
+            return $file;
+        }
+        $isYii = strpos($path, FileHelper::getAlias('@yii')) === 0;
+        if ((!$this->skipYiiOnError && $isYii) || (!$this->skipOnError && !$isYii)) {
+            throw new ThemeRender("The view file does not exist: $file");
         }
 
         return $path;
     }
 
     /**
-     * @return mixed
-     * @throws InvalidConfigException
+     * @param $name
+     */
+    public function setName($name)
+    {
+        $this->_name = $name;
+    }
+
+    /**
+     * @inheritdoc
      */
     public function getName()
     {
+        if ($this->_name === null) {
+            $this->_name = Yii::$app->getConfig()->get('theme', 'Default');
+        }
         return $this->_name;
     }
 
     /**
-     * @param $value
+     * @inheritdoc
      */
-    public function setName($value)
+    public function getTheme()
     {
-        $this->_name = $value;
+        if ($this->_name === null) {
+            $this->_name = Yii::$app->getConfig()->get('theme', 'Default');
+        }
+        return $this->_name;
+    }
+
+    /**
+     * @return array|mixed
+     * @throws InvalidConfigException
+     */
+    protected function themeBootstrap()
+    {
+        $config = [];
+        if ($this->getBasePath() !== null) {
+            $configFile = $this->getBasePath() . '/' . $this->getTheme() . '/registration.yml';
+            try {
+                $config = Yii::$app->getCache()->getOrSet(md5($configFile), function () use ($configFile) {
+                    if (file_exists($configFile)) {
+                        return Yaml::parse(file_get_contents($configFile), Yaml::PARSE_CONSTANT);
+                    }
+                    return [];
+                });
+            } catch (\Exception $e) {
+                if (YII_DEBUG) {
+                    throw new InvalidConfigException($e->getMessage());
+                } else {
+                    Yii::error('Error parse theme registration file: ' . $configFile);
+                }
+            }
+        }
+        $this->registerTheme($config);
+    }
+
+    /**
+     * @param array $config
+     */
+    protected function registerTheme(array $config)
+    {
+        if (isset($config['assets'])) {
+            $assets = ArrayHelper::remove($config, 'assets', []);
+            if (is_array($assets)) {
+                $this->registerAssets($assets);
+            }
+        }
+
+        $this->configure($config);
+    }
+
+    /**
+     * @param $assets
+     */
+    protected function registerAssets(array $assets)
+    {
+        foreach ($assets as $name => $bundle) {
+            if (is_string($name)) {
+                $basePath = ArrayHelper::getValue($bundle, 'basePath');
+                $baseUrl = ArrayHelper::getValue($bundle, 'baseUrl');
+                $sourcePath = ArrayHelper::getValue($bundle, 'sourcePath');
+                if (is_null($basePath) && is_null($baseUrl) && is_null($sourcePath)) {
+                    $sourcePath = $this->getBasePath() . '/' . $this->getTheme() . '/assets';
+                }
+                Yii::$app->getAssetManager()->bundles[$name] = [
+                    'sourcePath'     => $sourcePath,
+                    'basePath'       => $basePath,
+                    'baseUrl'        => $baseUrl,
+                    'css'            => ArrayHelper::getValue($bundle, 'css', []),
+                    'js'             => ArrayHelper::getValue($bundle, 'js', []),
+                    'jsOptions'      => ArrayHelper::getValue($bundle, 'jsOptions', []),
+                    'cssOptions'     => ArrayHelper::getValue($bundle, 'cssOptions', []),
+                    'publishOptions' => ArrayHelper::getValue($bundle, 'publishOptions', []),
+                ];
+            }
+        }
+    }
+
+    /**
+     * @param $properties
+     *
+     * @return $this
+     */
+    private function configure($properties)
+    {
+        foreach ($properties as $name => $value) {
+            if ($this->canSetProperty($name)) {
+                $this->$name = $value;
+            }
+        }
+
+        return $this;
     }
 }

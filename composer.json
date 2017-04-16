@@ -6,16 +6,16 @@
     "cms",
     "yii2"
   ],
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "require": {
     "php": "~7.0.0",
     "ext-mbstring": "*",
     "ext-openssl": "*",
     "ext-zip": "*",
     "ext-mcrypt": "*",
-    "yiisoft/yii2": "~2.0.0",
-    "yiisoft/yii2-swiftmailer": "*",
-    "yiisoft/yii2-debug": "~2.0.0",
+    "yiisoft/yii2": "~2.0.11",
+    "yiisoft/yii2-swiftmailer": "~2.0.0",
     "yiisoft/yii2-twig": "~2.0.0",
     "symfony/yaml": "*",
     "borales/yii2-phone-input": "*",
@@ -26,9 +26,14 @@
     "samdark/sitemap": "*",
     "danielstjules/stringy": "*",
     "longman/ip-tools": "*",
-    "bower-asset/requirejs": "~2"
+    "bower-asset/requirejs": "~2.3.3"
+  },
+  "require-dev": {
+    "yiisoft/yii2-debug": "~2.0.0"
   },
   "autoload": {
-    "psr-4": {"ej\\": ""}
+    "psr-4": {
+      "ej\\": ""
+    }
   }
 }

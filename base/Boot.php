@@ -3,7 +3,7 @@
 namespace ej\base;
 
 
-use ej\helpers\Url;
+use Yii;
 use yii\base\Component;
 use ej\helpers\FileHelper;
 use ej\helpers\ArrayHelper;

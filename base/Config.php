@@ -25,7 +25,7 @@ class Config extends Component
      * @var array
      */
     private $_configSettings = [
-        'defaultDirMode'      => 0775,
+        'defaultDirMode'      => 775,
         'defaultFileMode'     => null,
         'useFileLocks'        => 'auto',
         'sendPoweredByHeader' => true,

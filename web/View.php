@@ -6,11 +6,8 @@ namespace ej\web;
 use Yii;
 use ej\base\Theme;
 use ej\helpers\Html;
-use yii\base\ViewRenderer;
 use ej\helpers\FileHelper;
-use yii\base\InvalidCallException;
-use yii\base\ViewContextInterface;
-use yii\base\ViewNotFoundException;
+
 
 /**
  * Class View
@@ -28,15 +25,7 @@ class View extends \yii\web\View
      * @inheritdoc
      */
     const PH_BEGIN_HEAD = '<![CDATA[YII-BLOCK-BEGIN-HEAD]]>';
-    /**
-     * @var
-     */
-    public $pageName;
-    /**
-     * @var array the view files currently being rendered. There may be multiple view files being
-     * rendered at a moment because one view may be rendered within another.
-     */
-    private $_viewFiles = [];
+
 
     /**
      * @inheritdoc
@@ -83,10 +72,13 @@ class View extends \yii\web\View
      */
     public function getBlock($block_id, $return = false)
     {
-        if ($return === true) {
-            return $this->hasBlock($block_id) ? $this->blocks[$block_id] : null;
-        } elseif ($this->hasBlock($block_id)) {
+        if ($this->hasBlock($block_id)) {
+            if ($return === true) {
+                return $this->blocks[$block_id];
+            }
             echo $this->blocks[$block_id];
+        } else {
+            return '';
         }
     }
 
@@ -107,95 +99,19 @@ class View extends \yii\web\View
     }
 
     /**
-     * @param string $view
-     * @param null $context
-     *
-     * @return string
-     */
-    protected function findViewFile($view, $context = null)
-    {
-        if (strncmp($view, '@', 1) === 0) {
-            $file = FileHelper::getAlias($view);
-        } elseif (strncmp($view, '//', 2) === 0) {
-            $file = Yii::$app->getViewPath() . DIRECTORY_SEPARATOR . ltrim($view, '/');
-        } elseif (strncmp($view, '/', 1) === 0) {
-            if (Yii::$app->controller !== null) {
-                $file = Yii::$app->controller->module->getViewPath() . DIRECTORY_SEPARATOR . ltrim($view, '/');
-            } else {
-                throw new InvalidCallException("Unable to locate view file for view '$view': no active controller.");
-            }
-        } elseif ($context instanceof ViewContextInterface) {
-            $file = $context->getViewPath() . DIRECTORY_SEPARATOR . $view;
-        } elseif (($currentViewFile = $this->getViewFile()) !== false) {
-            $file = dirname($currentViewFile) . DIRECTORY_SEPARATOR . $view;
-        } else {
-            throw new InvalidCallException("Unable to resolve view file for view '$view': no active view context.");
-        }
-
-        if (pathinfo($file, PATHINFO_EXTENSION) !== '') {
-            return $file;
-        }
-
-        return $file . '.' . $this->defaultExtension;
-    }
-
-    /**
      * @param string $viewFile
      * @param array $params
-     * @param null $context
      *
-     * @return string
+     * @return bool
+     * @throws ViewRenderException
      */
-    public function renderFile($viewFile, $params = [], $context = null)
+    public function beforeRender($viewFile, $params): bool
     {
-        $viewFile = FileHelper::getAlias($viewFile);
-
-        if ($this->theme !== null) {
-            $viewFile = $this->theme->applyTo($viewFile);
-        }
-        if (is_file($viewFile)) {
-            $viewFile = FileHelper::localize($viewFile);
-        } else {
-            throw new ViewNotFoundException("The view file does not exist: $viewFile");
+        $ext = pathinfo($viewFile, PATHINFO_EXTENSION);
+        if (!isset($this->renderers[$ext]) && !Yii::$app->getConfig()->get('allowRenderPHP') && strpos($viewFile, FileHelper::getAlias('@yii')) !== 0) {
+            throw new ViewRenderException('You cannot render php file.');
         }
 
-        $oldContext = $this->context;
-        if ($context !== null) {
-            $this->context = $context;
-        }
-        $output = '';
-        $this->_viewFiles[] = $viewFile;
-
-        if ($this->beforeRender($viewFile, $params)) {
-            Yii::trace("Rendering view file: $viewFile", __METHOD__);
-            $ext = pathinfo($viewFile, PATHINFO_EXTENSION);
-            if (isset($this->renderers[$ext])) {
-                if (is_array($this->renderers[$ext]) || is_string($this->renderers[$ext])) {
-                    $this->renderers[$ext] = Yii::createObject($this->renderers[$ext]);
-                }
-                /* @var $renderer ViewRenderer */
-                $renderer = $this->renderers[$ext];
-                $output = $renderer->render($this, $viewFile, $params);
-            } elseif (Yii::$app->getConfig()->get('renderPhpFile') || strpos($viewFile, FileHelper::getAlias('@yii')) === 0) {
-                $output = $this->renderPhpFile($viewFile, $params);
-            } else {
-                throw new ViewNotFoundException("Could not find rendering engine for the view file: $viewFile");
-            }
-
-            $this->afterRender($viewFile, $params, $output);
-        }
-
-        array_pop($this->_viewFiles);
-        $this->context = $oldContext;
-
-        return $output;
-    }
-
-    /**
-     * @return string|boolean the view file currently being rendered. False if no view file is being rendered.
-     */
-    public function getViewFile()
-    {
-        return end($this->_viewFiles);
+        return parent::beforeRender($viewFile, $params);
     }
 }
