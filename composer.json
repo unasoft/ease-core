@@ -16,10 +16,9 @@
     "ext-mcrypt": "*",
     "yiisoft/yii2": "~2.0.11@stable",
     "yiisoft/yii2-swiftmailer": "~2.0.0",
-    "yiisoft/yii2-twig": "~2.0.0",
+    "yiisoft/yii2-smarty": "~2.0.0",
     "yiisoft/yii2-debug": "~2.0.0",
     "symfony/yaml": "*",
-    "borales/yii2-phone-input": "*",
     "mobiledetect/mobiledetectlib": "*",
     "giggsey/libphonenumber-for-php": "~8",
     "kdn/yii2-domain-validator": "*",
@@ -32,6 +31,11 @@
   "autoload": {
     "psr-4": {
       "ej\\": ""
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "1.0.x-dev"
     }
   }
 }
