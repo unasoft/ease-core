@@ -4,10 +4,10 @@ namespace ej\base;
 
 
 use Yii;
+use ej\helpers\Yaml;
 use yii\base\Component;
 use ej\helpers\FileHelper;
 use ej\helpers\ArrayHelper;
-use Symfony\Component\Yaml\Yaml;
 use yii\base\InvalidCallException;
 use yii\base\InvalidConfigException;
 
@@ -18,10 +18,6 @@ use yii\base\InvalidConfigException;
  */
 class Boot extends Component
 {
-    /**
-     * @var string
-     */
-    public $app = 'site';
     /**
      * @var bool
      */
@@ -40,6 +36,7 @@ class Boot extends Component
         'site'    => [
             '@ej/config/application.yml',
             '@app/config/application.{yml,php}',
+            '@vendor/ejsoft/module-*/registration.{yml,php}',
             '@app/modules/*/registration.{yml,php}',
             '@app/config/*-local.{yml,php}'
         ],
@@ -52,6 +49,10 @@ class Boot extends Component
      * @var
      */
     private $_compiled = [];
+    /**
+     * @var string
+     */
+    private $_app = 'site';
 
     /**
      * Configurator constructor.
@@ -72,7 +73,7 @@ class Boot extends Component
             throw new InvalidConfigException('`' . get_class($this) . '::app` must be set.');
         }
 
-        if ($this->cache === true && $this->getCacheFile($this->app) === null) {
+        if ($this->cache === true && $this->getCacheFile($this->getApp()) === null) {
             throw new InvalidConfigException('`' . get_class($this) . '::cacheFile` must be set.');
         }
     }
@@ -83,6 +84,19 @@ class Boot extends Component
     public function __clone()
     {
         throw new InvalidCallException('`' . get_called_class() . '` cannot be cloned.');
+    }
+
+    /**
+     * @param $value
+     */
+    public function setApp($value)
+    {
+        $this->_app = $value;
+    }
+
+    public function getApp()
+    {
+        return $this->_app;
     }
 
     /**
@@ -98,11 +112,11 @@ class Boot extends Component
     /**
      * @param string $app
      *
-     * @return array
+     * @return string
      */
     public function getCacheFile(string $app)
     {
-        return array_key_exists($app, $this->_cacheFile) ? $this->_cacheFile[$app] : [];
+        return array_key_exists($app, $this->_cacheFile) ? FileHelper::getAlias($this->_cacheFile[$app]) : '';
     }
 
     /**
@@ -146,6 +160,8 @@ class Boot extends Component
     {
         try {
             $compiled = $this->compile();
+            //print_r($compiled);
+            //die();
             if (!empty($compiled)) {
                 $config = ArrayHelper::merge($compiled, $config);
             }
@@ -183,8 +199,7 @@ class Boot extends Component
      */
     protected function compile(): array
     {
-
-        if ($this->cache && file_exists($this->getCacheFile($this->app)) && is_array(($compiled = require($this->getCacheFile($this->app))))) {
+        if ($this->cache && file_exists($this->getCacheFile($this->getApp())) && is_array(($compiled = require($this->getCacheFile($this->getApp()))))) {
             return $compiled;
         }
 
@@ -199,8 +214,8 @@ class Boot extends Component
         $this->makeBootstrap($this->_compiled);
 
         if ($this->cache) {
-            $compiledDir = pathinfo($this->cacheFile, PATHINFO_DIRNAME);
-            if (!FileHelper::createDirectory($compiledDir) || !file_put_contents($this->cacheFile, "<?php\n\nreturn " . var_export($this->_compiled, true) . ";\n\n?>")) {
+            $compiledDir = pathinfo($this->getCacheFile($this->getApp()), PATHINFO_DIRNAME);
+            if (!FileHelper::createDirectory($compiledDir) || !file_put_contents($this->getCacheFile($this->getApp()), "<?php\n\nreturn " . var_export($this->_compiled, true) . ";\n\n?>")) {
                 throw new InvalidConfigException('Error save compiled application configuration.');
             }
         }
@@ -232,7 +247,7 @@ class Boot extends Component
                 $ext = pathinfo($file, PATHINFO_EXTENSION);
                 switch ($ext) {
                     case "yml":
-                        $data[] = $this->processYml(file_get_contents($file));
+                        $data[] = $this->processYml($file);
                         break;
                     default:
                         $data[] = $this->processPHP(require($file));
@@ -402,6 +417,8 @@ class Boot extends Component
 
             if ($id && is_string($id) && $class) {
                 $this->_compiled['modules'][$id] = !empty($modules) ? ArrayHelper::merge(['class' => $class], $modules) : $class;
+                $path = '@' . substr(str_replace('\\', '/', $class), 0, strrpos($class, '\\')) . '/views';
+                $this->_compiled['components']['view']['theme']['pathMap'][$path] = '@themes/' . $id;
             }
         }
     }

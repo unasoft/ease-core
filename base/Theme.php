@@ -12,7 +12,6 @@ use yii\base\InvalidConfigException;
 
 class Theme extends \yii\base\Theme
 {
-    const TYPE = 'theme';
     /**
      * @var bool
      */
@@ -35,7 +34,8 @@ class Theme extends \yii\base\Theme
     {
         parent::__construct($config);
 
-        $this->pathMap = [];
+        FileHelper::setAlias('@themes', $this->getBasePath());
+
         $this->themeBootstrap();
     }
 
@@ -43,19 +43,34 @@ class Theme extends \yii\base\Theme
      * @param string $path
      *
      * @return string
+     * @throws InvalidConfigException
      * @throws ThemeRender
      */
     public function applyTo($path)
     {
-        $path = FileHelper::normalizePath($path);
-        $to = implode('/', array_slice(explode('/', $path), -2, 2));
-        $file = $this->getBasePath() . '/' . $to;
+        $pathMap = $this->pathMap;
+        if (empty($pathMap)) {
+            if (($basePath = $this->getBasePath()) === null) {
+                throw new InvalidConfigException('The "basePath" property must be set.');
+            }
+            $pathMap = [Yii::$app->getBasePath() => [$basePath]];
+        }
 
-        if (is_file($file)) {
-            return $file;
+        $path = FileHelper::normalizePath($path);
+
+        foreach ($pathMap as $from => $to) {
+            $from = FileHelper::normalizePath(Yii::getAlias($from)) . DIRECTORY_SEPARATOR;
+            if (strpos($path, $from) === 0) {
+                $n = strlen($from);
+                $to = FileHelper::normalizePath(Yii::getAlias($to)) . DIRECTORY_SEPARATOR;
+                $file = $to . substr($path, $n);
+                if (is_file($file)) {
+                    return $file;
+                }
+            }
         }
         $isYii = strpos($path, FileHelper::getAlias('@yii')) === 0;
-        if ((!$this->skipYiiOnError && $isYii) || (!$this->skipOnError && !$isYii)) {
+        if (isset($file) && ((!$this->skipYiiOnError && $isYii) || (!$this->skipOnError && !$isYii))) {
             throw new ThemeRender("The view file does not exist: $file");
         }
 
@@ -93,6 +108,14 @@ class Theme extends \yii\base\Theme
     }
 
     /**
+     * @return string
+     */
+    public function getBasePath()
+    {
+        return rtrim(parent::getBasePath() . '/' . $this->getTheme(), '/');
+    }
+
+    /**
      * @return array|mixed
      * @throws InvalidConfigException
      */
@@ -104,7 +127,7 @@ class Theme extends \yii\base\Theme
             try {
                 $config = Yii::$app->getCache()->getOrSet(md5($configFile), function () use ($configFile) {
                     if (file_exists($configFile)) {
-                        return Yaml::parse(file_get_contents($configFile), Yaml::PARSE_CONSTANT);
+                        return Yaml::parse($configFile, Yaml::PARSE_CONSTANT);
                     }
                     return [];
                 });

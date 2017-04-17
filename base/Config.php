@@ -29,7 +29,7 @@ class Config extends Component
         'defaultFileMode'     => null,
         'useFileLocks'        => 'auto',
         'sendPoweredByHeader' => true,
-        'renderPhpFile'       => true,
+        'allowRenderPHP'      => true,
         'useWriteFileLock'    => true
     ];
     /**

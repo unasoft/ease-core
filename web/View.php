@@ -7,6 +7,9 @@ use Yii;
 use ej\base\Theme;
 use ej\helpers\Html;
 use ej\helpers\FileHelper;
+use ej\exceptions\ViewRender;
+use yii\base\InvalidCallException;
+use yii\base\ViewContextInterface;
 
 
 /**
@@ -103,15 +106,53 @@ class View extends \yii\web\View
      * @param array $params
      *
      * @return bool
-     * @throws ViewRenderException
+     * @throws ViewRender
      */
     public function beforeRender($viewFile, $params): bool
     {
         $ext = pathinfo($viewFile, PATHINFO_EXTENSION);
         if (!isset($this->renderers[$ext]) && !Yii::$app->getConfig()->get('allowRenderPHP') && strpos($viewFile, FileHelper::getAlias('@yii')) !== 0) {
-            throw new ViewRenderException('You cannot render php file.');
+            throw new ViewRender('You cannot render php file.');
         }
 
         return parent::beforeRender($viewFile, $params);
+    }
+
+    /**
+     * @param string $view
+     * @param null $context
+     *
+     * @return bool|string
+     */
+    protected function findViewFile($view, $context = null)
+    {
+        if (strncmp($view, '@', 1) === 0) {
+            // e.g. "@app/views/main"
+            $file = Yii::getAlias($view);
+        } elseif (strncmp($view, '//', 2) === 0) {
+            // e.g. "//layouts/main"
+            $file = Yii::$app->getViewPath() . DIRECTORY_SEPARATOR . ltrim($view, '/');
+        } elseif (strncmp($view, '/', 1) === 0) {
+            // e.g. "/site/index"
+            if (Yii::$app->controller !== null) {
+                $file = Yii::$app->controller->module->getViewPath() . DIRECTORY_SEPARATOR . ltrim($view, '/');
+            } else {
+                throw new InvalidCallException("Unable to locate view file for view '$view': no active controller.");
+            }
+        } elseif ($context instanceof ViewContextInterface) {
+            $file = $context->getViewPath() . DIRECTORY_SEPARATOR . $view;
+        } elseif (($currentViewFile = $this->getViewFile()) !== false) {
+            $file = dirname($currentViewFile) . DIRECTORY_SEPARATOR . $view;
+        } else {
+            throw new InvalidCallException("Unable to resolve view file for view '$view': no active view context.");
+        }
+
+        if (pathinfo($file, PATHINFO_EXTENSION) !== '') {
+            return $file;
+        }
+
+        $path = $file . '.' . $this->defaultExtension;
+
+        return $path;
     }
 }

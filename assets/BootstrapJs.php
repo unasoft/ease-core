@@ -15,7 +15,7 @@ class BootstrapJs extends AssetBundle
      * @var array
      */
     public $js = [
-        'js/bootstrap.js',
+        YII_DEBUG ? 'js/bootstrap.js' : 'js/bootstrap.min.js',
     ];
     /**
      * @var array

@@ -15,6 +15,6 @@ class Jquery extends AssetBundle
      * @var array
      */
     public $js = [
-        'jquery.js',
+        YII_DEBUG ? 'jquery.js' : 'jquery.min.js',
     ];
 }

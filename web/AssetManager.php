@@ -8,6 +8,11 @@ use ej\helpers\FileHelper;
 class AssetManager extends \yii\web\AssetManager
 {
     /**
+     * @var bool
+     */
+    public $appendTimestamp = YII_DEBUG;
+
+    /**
      * @inheritdoc
      */
     public function init()

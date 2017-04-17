@@ -3,6 +3,21 @@
  * bootstrap file.
  */
 
+use ej\helpers\FileHelper;
+
+defined('YII_ENV') or define('YII_ENV', 'prod');
+
+if (PHP_SAPI !== 'cli') {
+    // Normalize how PHP's string methods (strtoupper, etc) behave.
+    setlocale(
+        LC_CTYPE,
+        'C.UTF-8', // libc >= 2.13
+        'C.utf8', // different spelling
+        'en_US.UTF-8', // fallback to lowest common denominator
+        'en_US.utf8' // different spelling for fallback
+    );
+}
+
 if (defined('VENDOR_DIR')) {
     $autoload = VENDOR_DIR . '/autoload.php';
     if (file_exists($autoload)) {
@@ -31,6 +46,7 @@ if (YII_ENV === 'dev' || PHP_SAPI === 'cli') {
 require(__DIR__ . '/Yii.php');
 require(__DIR__ . '/functions.php');
 
-ej\helpers\FileHelper::setAlias('@ej', __DIR__);
-ej\helpers\FileHelper::setAlias('@app', dirname(VENDOR_DIR) . '/app');
-ej\helpers\FileHelper::setAlias('@protected', dirname(VENDOR_DIR));
+FileHelper::setAlias('@ej', __DIR__);
+FileHelper::setAlias('@app', dirname(VENDOR_DIR) . '/app');
+FileHelper::setAlias('@vendor', VENDOR_DIR);
+FileHelper::setAlias('@protected', dirname(VENDOR_DIR));

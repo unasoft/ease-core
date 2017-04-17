@@ -15,6 +15,6 @@ class Bootstrap extends AssetBundle
      * @var array
      */
     public $css = [
-        'css/bootstrap.css',
+        YII_DEBUG ? 'cs/bootstrap.min.css' : 'css/bootstrap.css',
     ];
 }
