@@ -8,6 +8,7 @@ use ej\helpers\Yaml;
 use yii\base\Component;
 use ej\helpers\FileHelper;
 use ej\helpers\ArrayHelper;
+use yii\base\Exception;
 use yii\base\InvalidCallException;
 use yii\base\InvalidConfigException;
 
@@ -19,40 +20,38 @@ use yii\base\InvalidConfigException;
 class Boot extends Component
 {
     /**
+     * @var string
+     */
+    public $app = 'default';
+    /**
      * @var bool
      */
     public $cache = true;
     /**
-     * @var array
+     * @var string
      */
-    private $_cacheFile = [
-        'site'    => '@app/config/boot.php',
-        'console' => '@app/console/boot.php'
-    ];
+    private $_cachePath;
     /**
      * @var array
      */
     private $_boots = [
-        'site'    => [
-            '@ej/config/application.yml',
-            '@app/config/application.{yml,php}',
-            '@vendor/ejsoft/module-*/registration.{yml,php}',
+        'default' => [
+            '@ej/config/app.yml',
+            '@app/config/app.{yml,php}',
             '@app/modules/*/registration.{yml,php}',
-            '@app/config/*-local.{yml,php}'
+            '@app/config/app-local.{yml,php}'
         ],
         'console' => [
-            '@ej/console/config/application.yml',
-            '@app/console/config/*-local.{php,yml}'
+            '@ej/console/config/app.yml',
+            '@app/console/config/app.{yml,php}',
+            '@app/console/modules/*/registration.{yml,php}',
+            '@app/console/config/app-local.{yml,php}'
         ]
     ];
     /**
      * @var
      */
     private $_compiled = [];
-    /**
-     * @var string
-     */
-    private $_app = 'site';
 
     /**
      * Configurator constructor.
@@ -69,12 +68,20 @@ class Boot extends Component
             $this->cache = false;
         }
 
-        if (empty($this->app)) {
-            throw new InvalidConfigException('`' . get_class($this) . '::app` must be set.');
-        }
-
-        if ($this->cache === true && $this->getCacheFile($this->getApp()) === null) {
-            throw new InvalidConfigException('`' . get_class($this) . '::cacheFile` must be set.');
+        $vendorBoot = FileHelper::getAlias('@vendor/ejsoft/boot.php');
+        if (file_exists($vendorBoot)) {
+            try {
+                $boots = require($vendorBoot);
+                if (is_array($boots)) {
+                    foreach ($boots as $app => $packages) {
+                        foreach ($packages as $package) {
+                            $this->setBoot($package['boot'], $app);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                throw new InvalidConfigException('Error load boot file: ' . $vendorBoot);
+            }
         }
     }
 
@@ -87,47 +94,36 @@ class Boot extends Component
     }
 
     /**
-     * @param $value
+     * @param $path
      */
-    public function setApp($value)
+    public function setCachePath($path)
     {
-        $this->_app = $value;
-    }
-
-    public function getApp()
-    {
-        return $this->_app;
+        $this->_cachePath = FileHelper::getAlias($path);
     }
 
     /**
-     * @inheritdoc
-     */
-    public function setCacheFile($file, $app = null)
-    {
-        $app = $app === null ? $this->app : $app;
-
-        $this->_cacheFile[$app] = FileHelper::getAlias($file);
-    }
-
-    /**
-     * @param string $app
-     *
      * @return string
+     * @throws InvalidConfigException
      */
-    public function getCacheFile(string $app)
+    public function getCachePath()
     {
-        return array_key_exists($app, $this->_cacheFile) ? FileHelper::getAlias($this->_cacheFile[$app]) : '';
+        if ($this->_cachePath === null) {
+            $this->_cachePath = PROTECTED_DIR . '/runtime';
+            if ($this->app !== 'default') {
+                $this->_cachePath .= '/' . $this->app;
+            }
+        }
+
+        return $this->_cachePath;
     }
 
     /**
      * @param $value
-     * @param null $app
+     * @param string $app
      * @param bool $clear
      */
-    public function setBoot($value, $app = null, $clear = false)
+    public function setBoot($value, $app = 'default', $clear = false)
     {
-        $app = $app === null ? $this->app : $app;
-
         if ($clear) {
             $this->_boots[$app] = is_array($value) ? $value : [$value];
         } else if (is_string($value)) {
@@ -140,11 +136,11 @@ class Boot extends Component
     }
 
     /**
-     * @param $app
+     * @param string $app
      *
      * @return array|mixed
      */
-    public function getBoot($app)
+    public function getBoot($app = 'default')
     {
         return array_key_exists($app, $this->_boots) ? $this->_boots[$app] : [];
     }
@@ -153,19 +149,21 @@ class Boot extends Component
      * @param string @class
      * @param array $config
      *
-     * @return array
+     * @return \ej\web\Application|\ej\console\Application
      * @throws InvalidConfigException
      */
     public function apply(string $class, array $config = [])
     {
         try {
             $compiled = $this->compile();
-            //print_r($compiled);
-            //die();
             if (!empty($compiled)) {
                 $config = ArrayHelper::merge($compiled, $config);
             }
-            return new $class($config);
+            if (class_exists($class) && is_subclass_of($class, 'yii\base\Application')) {
+                return new $class($config);
+            } else {
+                throw new Exception('Application class must extend from \\yii\\base\\Application.');
+            }
         } catch (\Exception $e) {
             throw new InvalidConfigException($e->getMessage());
         }
@@ -199,7 +197,7 @@ class Boot extends Component
      */
     protected function compile(): array
     {
-        if ($this->cache && file_exists($this->getCacheFile($this->getApp())) && is_array(($compiled = require($this->getCacheFile($this->getApp()))))) {
+        if ($this->cache && file_exists($this->getCacheFile()) && is_array(($compiled = require($this->getCacheFile())))) {
             return $compiled;
         }
 
@@ -214,8 +212,8 @@ class Boot extends Component
         $this->makeBootstrap($this->_compiled);
 
         if ($this->cache) {
-            $compiledDir = pathinfo($this->getCacheFile($this->getApp()), PATHINFO_DIRNAME);
-            if (!FileHelper::createDirectory($compiledDir) || !file_put_contents($this->getCacheFile($this->getApp()), "<?php\n\nreturn " . var_export($this->_compiled, true) . ";\n\n?>")) {
+            $compiledDir = pathinfo($this->getCacheFile(), PATHINFO_DIRNAME);
+            if (!FileHelper::createDirectory($compiledDir) || !file_put_contents($this->getCacheFile(), "<?php\n\nreturn " . var_export($this->_compiled, true) . ";\n\n?>")) {
                 throw new InvalidConfigException('Error save compiled application configuration.');
             }
         }
@@ -247,15 +245,45 @@ class Boot extends Component
                 $ext = pathinfo($file, PATHINFO_EXTENSION);
                 switch ($ext) {
                     case "yml":
-                        $data[] = $this->processYml($file);
+                        $fileData = $this->processYml($file);
                         break;
                     default:
-                        $data[] = $this->processPHP(require($file));
+                        $fileData = $this->processPHP(require($file));
                 }
+
+                $data[] = ArrayHelper::merge(['weight' => 0], $fileData);
             }
+
+            usort($data, function ($a, $b) {
+                if (is_string($a)) {
+                    return 0;
+                }
+                if (is_array($a) && $a['weight'] > 0 && is_string($b)) {
+                    return 0;
+                }
+                if (is_string($a) && is_string($b) || $a['weight'] == $b['weight']) {
+                    return -1;
+                }
+                return ($a['weight'] < $b['weight']) ? -1 : 1;
+            });
         }
 
+        array_walk($data, function (&$item) {
+            unset($item['weight']);
+        });
+
         return $data;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getCacheFile()
+    {
+        $boots = is_array($this->getBoot($this->app)) ? implode(',', $this->getBoot($this->app)) : $this->getBoot($this->app);
+        $fileName = md5($boots);
+
+        return $this->getCachePath() . '/' . $fileName . '.php';
     }
 
     /**
@@ -391,7 +419,12 @@ class Boot extends Component
     {
         if (is_array($components)) {
             foreach ($components as $id => $component) {
-                $this->_compiled[$name][$id] = $component;
+                if (isset($this->_compiled[$name][$id])) {
+                    $oldComponent = is_string($this->_compiled[$name][$id]) ? ['class' => $this->_compiled[$name][$id]] : $this->_compiled[$name][$id];
+                    $this->_compiled[$name][$id] = ArrayHelper::merge($oldComponent, $component);
+                } else {
+                    $this->_compiled[$name][$id] = $component;
+                }
             }
         }
     }
