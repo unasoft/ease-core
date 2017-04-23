@@ -3,103 +3,29 @@
 namespace ej\base;
 
 
-use ej\backend\web\Application;
 use Yii;
 use yii\base\Component;
-use core\models\Domains;
-use yii\base\Exception;
-use core\models\SiteConfig;
+use ej\base\site\Record;
+use ej\exceptions\Site as SiteException;
 
 class Site extends Component
 {
     /**
      * @var
      */
-    private $_defaultSite;
+    private $_sites;
     /**
      * @var
      */
-    private $_site = [];
-    /**
-     * @var SiteConfig
-     */
-    private $_config;
+    private $_siteId = 0;
     /**
      * @var
      */
-    private $_data;
-
-
+    private $_defaultId = 0;
     /**
-     * @inheritdoc
+     * @var array
      */
-    public function switchSiteByCode($code, $throwException = true)
-    {
-        $this->load();
-
-        if (isset($this->_data['codes'][$code])) {
-            $site_id = $this->_data['codes'][$code];
-            $this->_site = $this->_data['sites'][$site_id];
-            $this->_config = null;
-        } elseif ($throwException) {
-            throw new Exception('site error');
-        }
-    }
-
-    /**
-     * @return integer|null
-     */
-    public function getId()
-    {
-        $this->load();
-
-        return isset($this->_site['site_id']) ? (int)$this->_site['site_id'] : null;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getCodes()
-    {
-        $this->load();
-
-        return isset($this->_data['codes']) ? array_keys($this->_data['codes']) : [];
-    }
-
-    /**
-     * @return SiteConfig
-     */
-    public function getConfig()
-    {
-        if ($this->_config == null) {
-            $this->_config = new SiteConfig($this->getId());
-        }
-
-        return $this->_config;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function defaultSite()
-    {
-        $this->load();
-
-        if ($this->_defaultSite === null) {
-            $default = null;
-            $this->_defaultSite = clone $this;
-            if (!empty($this->_data['sites'])) {
-                foreach ($this->_data['sites'] as $site) {
-                    if ($site['is_default']) {
-                        $default = $site;
-                    }
-                }
-            }
-            $this->_defaultSite->_site = $default ? $default : [];
-        }
-
-        return $this->_defaultSite;
-    }
+    private $_codes = [];
 
     /**
      * @param string $name
@@ -115,8 +41,8 @@ class Site extends Component
             return $this->$getter();
         }
 
-        if (isset($this->_site[$name]) || array_key_exists($name, $this->_site)) {
-            return $this->_site[$name];
+        if (isset($this->_sites[$name]) || array_key_exists($name, $this->_sites)) {
+            return $this->_sites[$name];
         } else {
             return null;
         }
@@ -139,14 +65,65 @@ class Site extends Component
     }
 
     /**
+     * @param string $name
+     * @param array $params
+     *
+     * @return mixed
+     */
+    public function __call($name, $params)
+    {
+        $this->load();
+
+        $object = $this->_sites[$this->_siteId];
+        if (method_exists($object, $name)) {
+            return call_user_func_array([$object, $name], $params);
+        }
+
+        return parent::__call($name, $params);
+    }
+
+    /**
      * @inheritdoc
      */
     public function __clone()
     {
-        $this->_data = [];
-        $this->_config = null;
+        throw new SiteException('Class "' . get_called_class() . '" cannot be cloned.');
+    }
 
-        parent::__clone();
+    /**
+     * @inheritdoc
+     */
+    public function switchSiteByCode($code, $throwException = true)
+    {
+        $this->load();
+
+        if (!empty($code) && array_key_exists($code, $this->_codes)) {
+            $this->_siteId = $this->_codes[$code];
+        } elseif ($throwException) {
+            throw new SiteException('Switched code "' . $code . '" not found.');
+        }
+
+        return $this;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getCodes()
+    {
+        $this->load();
+
+        return array_keys($this->_codes);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function defaultSite()
+    {
+        $this->load();
+
+        return isset($this->_sites[$this->_defaultId]) ? $this->_sites[$this->_defaultId] : null;
     }
 
     /**
@@ -154,18 +131,19 @@ class Site extends Component
      */
     protected function load()
     {
-        if ($this->_data === null) {
-            $sites = Domains::getSitesByHost(Yii::$app->getRequest()->getHostName(), true);
+        if ($this->_sites === null) {
+            $sites = Record::find()->all();
             if (!empty($sites)) {
                 foreach ($sites as $site) {
-                    if ($site['is_default']) {
-                        $this->_site = $site;
-                        $this->_defaultSite = clone $this;
-                        $this->_defaultSite->_site = $site;
+                    if ($site->is_default) {
+                        $this->_defaultId = $this->_siteId = $site->getId();
                     }
-                    $this->_data['sites'][$site['site_id']] = $site;
-                    $this->_data['codes'][$site['code']] = $site['site_id'];
+                    $this->_sites[$site->getId()] = $site;
+                    $this->_codes[$site->code] = $site->getId();
                 }
+            } else {
+                $this->_sites[0] = new Record();
+                $this->_codes['/'] = 0;
             }
         }
     }

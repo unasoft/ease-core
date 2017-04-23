@@ -76,7 +76,9 @@ class Boot extends Component
                 if (is_array($boots)) {
                     foreach ($boots as $app => $packages) {
                         foreach ($packages as $package) {
-                            $this->setBoot($package['boot'], $app);
+                            if ($app === $this->app) {
+                                $this->setBoot($package['boot'], $app);
+                            }
                             if (isset($package['alias']) && !empty($package['alias'])) {
                                 foreach ($package['alias'] as $alias => $path) {
                                     FileHelper::setAlias($alias, $path);
@@ -457,7 +459,7 @@ class Boot extends Component
             if ($id && is_string($id) && $class) {
                 $this->_compiled['modules'][$id] = !empty($modules) ? ArrayHelper::merge(['class' => $class], $modules) : $class;
                 $path = '@' . substr(str_replace('\\', '/', $class), 0, strrpos($class, '\\')) . '/views';
-                $this->_compiled['components']['view']['theme']['pathMap'][$path] = '@themes/' . $id;
+                $this->_compiled['components']['view']['theme']['pathMap'][$path] = '{theme}/' . $id;
             }
         }
     }

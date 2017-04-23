@@ -4,11 +4,12 @@ namespace ej\base;
 
 
 use Yii;
+use ej\helpers\Yaml;
 use ej\helpers\FileHelper;
 use ej\helpers\ArrayHelper;
 use ej\exceptions\ThemeRender;
-use Symfony\Component\Yaml\Yaml;
 use yii\base\InvalidConfigException;
+use yii\caching\FileDependency;
 
 class Theme extends \yii\base\Theme
 {
@@ -33,8 +34,6 @@ class Theme extends \yii\base\Theme
     public function __construct(array $config = [])
     {
         parent::__construct($config);
-
-        FileHelper::setAlias('@themes', $this->getBasePath());
 
         $this->themeBootstrap();
     }
@@ -62,7 +61,11 @@ class Theme extends \yii\base\Theme
             $from = FileHelper::normalizePath(Yii::getAlias($from)) . DIRECTORY_SEPARATOR;
             if (strpos($path, $from) === 0) {
                 $n = strlen($from);
+                if (strpos($to, $this->getBasePath()) !== 0 && strncmp($to, '@', 1)) {
+                    $to = $this->getBasePath() . '/' . $to;
+                }
                 $to = FileHelper::normalizePath(Yii::getAlias($to)) . DIRECTORY_SEPARATOR;
+                $to = strtr($to, ['{theme}' => $this->getTheme()]);
                 $file = $to . substr($path, $n);
                 if (is_file($file)) {
                     return $file;
@@ -108,14 +111,6 @@ class Theme extends \yii\base\Theme
     }
 
     /**
-     * @return string
-     */
-    public function getBasePath()
-    {
-        return rtrim(parent::getBasePath() . '/' . $this->getTheme(), '/');
-    }
-
-    /**
      * @return array|mixed
      * @throws InvalidConfigException
      */
@@ -125,12 +120,10 @@ class Theme extends \yii\base\Theme
         if ($this->getBasePath() !== null) {
             $configFile = $this->getBasePath() . '/' . $this->getTheme() . '/registration.yml';
             try {
-                $config = Yii::$app->getCache()->getOrSet(md5($configFile), function () use ($configFile) {
-                    if (file_exists($configFile)) {
-                        return Yaml::parse($configFile, Yaml::PARSE_CONSTANT);
-                    }
-                    return [];
-                });
+                $config = Yaml::parse($configFile);
+                if (!is_array($config)) {
+                    return;
+                }
             } catch (\Exception $e) {
                 if (YII_DEBUG) {
                     throw new InvalidConfigException($e->getMessage());
@@ -139,6 +132,7 @@ class Theme extends \yii\base\Theme
                 }
             }
         }
+
         $this->registerTheme($config);
     }
 
@@ -153,8 +147,6 @@ class Theme extends \yii\base\Theme
                 $this->registerAssets($assets);
             }
         }
-
-        $this->configure($config);
     }
 
     /**
@@ -170,7 +162,9 @@ class Theme extends \yii\base\Theme
                 if (is_null($basePath) && is_null($baseUrl) && is_null($sourcePath)) {
                     $sourcePath = $this->getBasePath() . '/' . $this->getTheme() . '/assets';
                 }
+
                 Yii::$app->getAssetManager()->bundles[$name] = [
+                    'class'          => 'ej\web\AssetBundle',
                     'sourcePath'     => $sourcePath,
                     'basePath'       => $basePath,
                     'baseUrl'        => $baseUrl,
@@ -179,24 +173,9 @@ class Theme extends \yii\base\Theme
                     'jsOptions'      => ArrayHelper::getValue($bundle, 'jsOptions', []),
                     'cssOptions'     => ArrayHelper::getValue($bundle, 'cssOptions', []),
                     'publishOptions' => ArrayHelper::getValue($bundle, 'publishOptions', []),
+                    'depends'        => ArrayHelper::getValue($bundle, 'depends', []),
                 ];
             }
         }
-    }
-
-    /**
-     * @param $properties
-     *
-     * @return $this
-     */
-    private function configure($properties)
-    {
-        foreach ($properties as $name => $value) {
-            if ($this->canSetProperty($name)) {
-                $this->$name = $value;
-            }
-        }
-
-        return $this;
     }
 }

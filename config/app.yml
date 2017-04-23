@@ -33,7 +33,7 @@ components:
         class: ej\base\Theme
         basePath: '@app/themes/Site'
         pathMap:
-          '@app/views': '@themes'
+          '@app/views': '{theme}'
     cache: yii\caching\FileCache
     assetManager: ej\web\AssetManager
     urlManager:

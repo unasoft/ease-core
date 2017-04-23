@@ -29,6 +29,26 @@ class View extends \yii\web\View
      */
     const PH_BEGIN_HEAD = '<![CDATA[YII-BLOCK-BEGIN-HEAD]]>';
 
+    /**
+     * @param $bundles
+     */
+    public function beginPage($bundles = [])
+    {
+        $am = $this->getAssetManager();
+        if (!empty($bundles)) {
+            if (is_array($bundles)) {
+                foreach ($bundles as $bundle) {
+                    $this->registerAssetBundle($bundle);
+                }
+            } elseif (is_string($bundles)) {
+                $this->registerAssetBundle($bundles);
+            }
+        } elseif ($bundles !== false && isset($am->bundles['default'])) {
+            $this->registerAssetBundle('default');
+        }
+
+        parent::beginPage();
+    }
 
     /**
      * @inheritdoc
