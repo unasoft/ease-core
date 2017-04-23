@@ -69,6 +69,7 @@ class Boot extends Component
         }
 
         $vendorBoot = FileHelper::getAlias('@vendor/ejsoft/boot.php');
+
         if (file_exists($vendorBoot)) {
             try {
                 $boots = require($vendorBoot);
@@ -76,6 +77,11 @@ class Boot extends Component
                     foreach ($boots as $app => $packages) {
                         foreach ($packages as $package) {
                             $this->setBoot($package['boot'], $app);
+                            if (isset($package['alias']) && !empty($package['alias'])) {
+                                foreach ($package['alias'] as $alias => $path) {
+                                    FileHelper::setAlias($alias, $path);
+                                }
+                            }
                         }
                     }
                 }
