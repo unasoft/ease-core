@@ -21,60 +21,46 @@ use yii\base\ViewContextInterface;
 class View extends \yii\web\View
 {
     /**
-     * @inheritdoc
+     * @param array $assets
      */
-    const POS_HEAD_BEGIN = 0;
-    /**
-     * @inheritdoc
-     */
-    const PH_BEGIN_HEAD = '<![CDATA[YII-BLOCK-BEGIN-HEAD]]>';
+    public function head($assets = ['default'])
+    {
+        $this->registerAsset($assets);
+
+        parent::head();
+    }
 
     /**
-     * @param $bundles
+     * @param $assets
      */
-    public function beginPage($bundles = [])
+    public function registerAsset($assets)
     {
-        $am = $this->getAssetManager();
-        if (!empty($bundles)) {
-            if (is_array($bundles)) {
-                foreach ($bundles as $bundle) {
-                    $this->registerAssetBundle($bundle);
+        if ($assets !== false && !empty($assets)) {
+            $am = $this->getAssetManager();
+            $assets = is_array($assets) ? $assets : [$assets];
+            foreach ($assets as $asset) {
+                if (isset($am->bundles[$asset])) {
+                    $this->registerAssetBundle($asset);
                 }
-            } elseif (is_string($bundles)) {
-                $this->registerAssetBundle($bundles);
             }
-        } elseif ($bundles !== false && isset($am->bundles['default'])) {
-            $this->registerAssetBundle('default');
+        }
+    }
+
+    /**
+     * @param $url
+     * @param string $bundleName
+     *
+     * @return string
+     */
+    public function getAssetUrl($url, $bundleName = 'default')
+    {
+        $bundle = $this->registerAssetBundle($bundleName);
+
+        if (!$bundle) {
+            return $url;
         }
 
-        parent::beginPage();
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function beginHead()
-    {
-        echo self::PH_BEGIN_HEAD;
-    }
-
-    /**
-     * @param bool $ajaxMode
-     */
-    public function endPage($ajaxMode = false)
-    {
-        $this->trigger(self::EVENT_END_PAGE);
-
-        $content = ob_get_clean();
-
-        echo strtr($content, [
-            self::PH_BEGIN_HEAD => $this->renderHeadBeginHtml(),
-            self::PH_HEAD       => $this->renderHeadHtml(),
-            self::PH_BODY_BEGIN => $this->renderBodyBeginHtml(),
-            self::PH_BODY_END   => $this->renderBodyEndHtml($ajaxMode),
-        ]);
-
-        $this->clear();
+        return $bundle->baseUrl . '/' . ltrim($url, '/');
     }
 
     /**
@@ -103,22 +89,6 @@ class View extends \yii\web\View
         } else {
             return '';
         }
-    }
-
-    /**
-     * @inheritdoc
-     */
-    protected function renderHeadBeginHtml()
-    {
-        $lines = [];
-        if (!empty($this->jsFiles[self::POS_HEAD_BEGIN])) {
-            $lines[] = implode("\n", $this->jsFiles[self::POS_HEAD_BEGIN]);
-        }
-        if (!empty($this->js[self::POS_HEAD_BEGIN])) {
-            $lines[] = Html::script(implode("\n", $this->js[self::POS_HEAD_BEGIN]), ['type' => 'text/javascript']);
-        }
-
-        return empty($lines) ? '' : implode("\n", $lines);
     }
 
     /**

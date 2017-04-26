@@ -18,7 +18,7 @@ components:
     security: ej\base\Security
     view:
       class: ej\web\View
-      defaultExtension: twig
+      defaultExtension: php
       renderers:
         twig:
           class: yii\twig\ViewRenderer
