@@ -118,17 +118,8 @@ class UrlManager extends \yii\web\UrlManager
             }
 
             if ($process && !$this->_processed) {
-                $normalized = false;
-                if (property_exists($this, 'normalizer') && $this->normalizer !== false) {
-                    try {
-                        parent::parseRequest($request);
-                    } catch (UrlNormalizerRedirectException $e) {
-                        $normalized = true;
-                    }
-                }
-
                 $this->_processed = true;
-                $this->processCodeUrl($normalized);
+                $this->processCodeUrl();
             }
         }
 
@@ -138,21 +129,25 @@ class UrlManager extends \yii\web\UrlManager
     /**
      * @inheritdoc
      */
-    protected function processCodeUrl($normalized)
+    protected function processCodeUrl()
     {
         if (!$this->get('enableCodeUrls')) {
             return;
         }
 
         $pathInfo = $this->_request->getPathInfo();
-
         $pattern = implode('|', Yii::$app->getSite()->getCodes());
+
         if (preg_match("#^($pattern)\b(/?)#i", $pathInfo, $m)) {
             $this->_request->setPathInfo(mb_substr($pathInfo, mb_strlen($m[1] . $m[2])));
             $code = $m[1];
 
-            if ($normalized) {
-                $this->redirectToCode($code);
+            if ($this->normalizer instanceof UrlNormalizer) {
+                $normalized = false;
+                $this->normalizer->normalizePathInfo($pathInfo, '/', $normalized);
+                if ($normalized) {
+                    $this->redirectToCode($code);
+                }
             }
 
             if (!$this->get('enableDefaultUrlCode') && $code === $this->site->default()->code) {
@@ -356,17 +351,23 @@ class UrlManager extends \yii\web\UrlManager
         if ($result === false) {
             throw new \yii\web\NotFoundHttpException(Yii::t('yii', 'Page not found.'));
         }
+
         list ($route, $params) = $result;
+
         if ($code) {
             $params[$this->get('codeParam')] = $code;
         }
-        $params = $params + $this->_request->getQueryParams();
-        array_unshift($params, $route);
-        $url = $this->createUrl($params);
 
-        if ($this->suffix === '/' && $route === '' && count($params) === 1) {
+        $params = $params + $this->_request->getQueryParams();
+        $routeCrete = $params;
+        array_unshift($routeCrete, $route);
+
+        $url = $this->createUrl($routeCrete);
+
+        if (count($params) === 1 && array_key_exists($this->get('codeParam'), $params)) {
             $url = rtrim($url, '/') . '/';
         }
+
         if ($url === $this->_request->url) {
             return;
         }

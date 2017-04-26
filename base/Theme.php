@@ -9,7 +9,6 @@ use ej\helpers\FileHelper;
 use ej\helpers\ArrayHelper;
 use ej\exceptions\ThemeRender;
 use yii\base\InvalidConfigException;
-use yii\caching\FileDependency;
 
 class Theme extends \yii\base\Theme
 {
@@ -25,6 +24,10 @@ class Theme extends \yii\base\Theme
      * @var
      */
     private $_name;
+    /**
+     * @var
+     */
+    private $_themePath;
 
     /**
      * Theme constructor.
@@ -61,11 +64,10 @@ class Theme extends \yii\base\Theme
             $from = FileHelper::normalizePath(Yii::getAlias($from)) . DIRECTORY_SEPARATOR;
             if (strpos($path, $from) === 0) {
                 $n = strlen($from);
-                if (strpos($to, $this->getBasePath()) !== 0 && strncmp($to, '@', 1)) {
-                    $to = $this->getBasePath() . '/' . $to;
+                if (strpos($to, $this->getBasePath()) === 0) {
+                    $to = substr($to, strlen($this->getBasePath()));
                 }
-                $to = FileHelper::normalizePath(Yii::getAlias($to)) . DIRECTORY_SEPARATOR;
-                $to = strtr($to, ['{theme}' => $this->getTheme()]);
+                $to = FileHelper::normalizePath($this->getThemePath() . '/' . ltrim($to, '/')) . DIRECTORY_SEPARATOR;
                 $file = $to . substr($path, $n);
                 if (is_file($file)) {
                     return $file;
@@ -94,20 +96,30 @@ class Theme extends \yii\base\Theme
     public function getName()
     {
         if ($this->_name === null) {
-            $this->_name = Yii::$app->getConfig()->get('theme', 'Default');
+            throw new InvalidConfigException('Theme property "name" must be set.');
         }
+
         return $this->_name;
+    }
+
+    /**
+     * @param $value
+     */
+    public function setThemePath($value)
+    {
+        $this->_themePath = $value;
     }
 
     /**
      * @inheritdoc
      */
-    public function getTheme()
+    public function getThemePath()
     {
-        if ($this->_name === null) {
-            $this->_name = Yii::$app->getConfig()->get('theme', 'Default');
+        if ($this->_themePath === null) {
+            throw new InvalidConfigException('Theme property "themePath" must be set.');
         }
-        return $this->_name;
+
+        return $this->getBasePath() . DIRECTORY_SEPARATOR . $this->_themePath;
     }
 
     /**
@@ -116,9 +128,9 @@ class Theme extends \yii\base\Theme
      */
     protected function themeBootstrap()
     {
-        $config = [];
-        if ($this->getBasePath() !== null) {
-            $configFile = $this->getBasePath() . '/' . $this->getTheme() . '/registration.yml';
+        if ($this->getBasePath() !== null && ($theme = Yii::$app->getConfig()->get('theme', 'Default'))) {
+            $config = [];
+            $configFile = $this->getBasePath() . '/' . $theme . '/registration.yml';
             try {
                 $config = Yaml::parse($configFile);
                 if (!is_array($config)) {
@@ -131,9 +143,33 @@ class Theme extends \yii\base\Theme
                     Yii::error('Error parse theme registration file: ' . $configFile);
                 }
             }
-        }
+            $themeName = ArrayHelper::remove($config, 'name');
+            if ($themeName) {
+                $this->setName($themeName);
+            }
+            $useDeviceTheme = ArrayHelper::remove($config, 'useDeviceTheme', false);
+            if ($useDeviceTheme === true) {
+                $device = Yii::$app->getDevice();
+                if (!$device->isMobile() && !$device->isTablet()) {
+                    if (array_key_exists('desktop', $config)) {
+                        $config = ArrayHelper::getValue($config, 'desktop', []);
+                    } else {
+                        unset($config['tablet'], $config['mobile']);
+                    }
+                } elseif ($device->isTablet() && array_key_exists('tablet', $config)) {
+                    $config = ArrayHelper::getValue($config, 'tablet', []);
+                } else {
+                    $config = ArrayHelper::getValue($config, 'mobile', []);
+                }
+            } else {
+                unset($config['tablet'], $config['mobile']);
+            }
 
-        $this->registerTheme($config);
+            $themePath = ArrayHelper::remove($config, 'path');
+
+            $this->setThemePath($themeName ? $theme . '/' . $themePath : $theme);
+            $this->registerTheme($config);
+        }
     }
 
     /**
@@ -160,7 +196,7 @@ class Theme extends \yii\base\Theme
                 $baseUrl = ArrayHelper::getValue($bundle, 'baseUrl');
                 $sourcePath = ArrayHelper::getValue($bundle, 'sourcePath');
                 if (is_null($basePath) && is_null($baseUrl) && is_null($sourcePath)) {
-                    $sourcePath = $this->getBasePath() . '/' . $this->getTheme() . '/assets';
+                    $sourcePath = $this->getThemePath() . '/assets';
                 }
 
                 Yii::$app->getAssetManager()->bundles[$name] = [
@@ -175,6 +211,18 @@ class Theme extends \yii\base\Theme
                     'publishOptions' => ArrayHelper::getValue($bundle, 'publishOptions', []),
                     'depends'        => ArrayHelper::getValue($bundle, 'depends', []),
                 ];
+            }
+        }
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function configure(array $config)
+    {
+        foreach ($config as $attribute => $value) {
+            if ($this->canSetProperty($attribute)) {
+                $this->$attribute = $value;
             }
         }
     }

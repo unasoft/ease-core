@@ -459,7 +459,7 @@ class Boot extends Component
             if ($id && is_string($id) && $class) {
                 $this->_compiled['modules'][$id] = !empty($modules) ? ArrayHelper::merge(['class' => $class], $modules) : $class;
                 $path = '@' . substr(str_replace('\\', '/', $class), 0, strrpos($class, '\\')) . '/views';
-                $this->_compiled['components']['view']['theme']['pathMap'][$path] = '{theme}/' . $id;
+                $this->_compiled['components']['view']['theme']['pathMap'][$path] = $id;
             }
         }
     }
