@@ -4,8 +4,10 @@ namespace ej\base;
 
 
 use Yii;
+use yii\caching\Cache;
 use yii\base\Component;
-use ej\base\site\Record;
+use yii\base\UnknownMethodException;
+use ej\models\site\Site as SiteModel;
 use ej\exceptions\Site as SiteException;
 
 class Site extends Component
@@ -13,19 +15,15 @@ class Site extends Component
     /**
      * @var
      */
-    private $_sites;
+    private $_site;
     /**
      * @var
      */
-    private $_siteId = 0;
-    /**
-     * @var
-     */
-    private $_defaultId = 0;
+    private $_default;
     /**
      * @var array
      */
-    private $_codes = [];
+    private $_codes;
 
     /**
      * @param string $name
@@ -34,15 +32,13 @@ class Site extends Component
      */
     public function __get($name)
     {
-        $this->load();
-
         $getter = 'get' . $name;
         if (method_exists($this, $getter)) {
             return $this->$getter();
         }
 
-        if (isset($this->_sites[$name]) || array_key_exists($name, $this->_sites)) {
-            return $this->_sites[$name];
+        if (isset($this->_site[$name]) || array_key_exists($name, $this->_site)) {
+            return $this->_site[$name];
         } else {
             return null;
         }
@@ -56,8 +52,6 @@ class Site extends Component
     public function __isset($name)
     {
         try {
-            $this->load();
-
             return $this->__get($name) !== null;
         } catch (\Exception $e) {
             return false;
@@ -72,14 +66,15 @@ class Site extends Component
      */
     public function __call($name, $params)
     {
-        $this->load();
-
-        $object = $this->_sites[$this->_siteId];
-        if (method_exists($object, $name)) {
-            return call_user_func_array([$object, $name], $params);
+        if ($this->_site instanceof SiteModel && method_exists($this->_site, $name)) {
+            return call_user_func_array([$this->_site, $name], $params);
         }
 
-        return parent::__call($name, $params);
+        try {
+            return parent::__call($name, $params);
+        } catch (UnknownMethodException $e) {
+            return null;
+        }
     }
 
     /**
@@ -93,58 +88,114 @@ class Site extends Component
     /**
      * @inheritdoc
      */
-    public function switchSiteByCode($code, $throwException = true)
+    public function switchSite($id, $throwException = true)
     {
-        $this->load();
-
-        if (!empty($code) && array_key_exists($code, $this->_codes)) {
-            $this->_siteId = $this->_codes[$code];
-        } elseif ($throwException) {
-            throw new SiteException('Switched code "' . $code . '" not found.');
+        if ($id && is_int($id)) {
+            return $this->_site = $this->getById($id);
+        } else if (!empty($id) && array_key_exists($id, $this->_codes)) {
+            return $this->_site = $this->getByCode($id);
         }
 
-        return $this;
+        if ($throwException) {
+            throw new SiteException('Switched code "' . $id . '" not found.');
+        }
     }
 
     /**
-     * @inheritdoc
+     * @param $id
+     *
+     * @return mixed
+     */
+    public function getById($id)
+    {
+        return $this->getCache('site:' . $id, function () use ($id) {
+            return SiteModel::find()->where(['site_id' => $id, 'is_active' => SiteModel::IS_ACTIVE])->one();
+        });
+    }
+
+    /**
+     * @param $code
+     *
+     * @return integer|null
+     */
+    public function getByCode($code)
+    {
+        $codes = $this->getCodesIds();
+
+        return array_key_exists($code, $codes) ? $this->getById($codes[$code]) : null;
+    }
+
+    /**
+     * @param $locale
+     */
+    public function findByLocale($locale)
+    {
+
+    }
+
+    /**
+     * @return array
      */
     public function getCodes()
     {
-        $this->load();
-
-        return array_keys($this->_codes);
+        return array_keys($this->getCodesIds());
     }
 
     /**
      * @inheritdoc
      */
-    public function defaultSite()
+    public function getCodesIds()
     {
-        $this->load();
-
-        return isset($this->_sites[$this->_defaultId]) ? $this->_sites[$this->_defaultId] : null;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    protected function load()
-    {
-        if ($this->_sites === null) {
-            $sites = Record::find()->all();
-            if (!empty($sites)) {
-                foreach ($sites as $site) {
-                    if ($site->is_default) {
-                        $this->_defaultId = $this->_siteId = $site->getId();
-                    }
-                    $this->_sites[$site->getId()] = $site;
-                    $this->_codes[$site->code] = $site->getId();
+        if ($this->_codes === null) {
+            $this->_codes = $this->getCache('codes', function () {
+                $codes = [];
+                foreach (SiteModel::find()->where(['is_active' => SiteModel::IS_ACTIVE])->all() as $site) {
+                    $codes[$site->code] = $site->getId();
                 }
-            } else {
-                $this->_sites[0] = new Record();
-                $this->_codes['/'] = 0;
+                return $codes;
+            });
+            if (!is_array($this->_codes)) {
+                $this->_codes = [];
             }
         }
+
+        return $this->_codes;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function default()
+    {
+        if ($this->_default === null) {
+            $this->_default = $this->getCache('default', function () {
+                return SiteModel::find()->where(['is_default' => 1])->one();
+            });
+        }
+
+        return $this->_default;
+    }
+
+    /**
+     * @param $key
+     * @param $data
+     *
+     * @return mixed
+     */
+    protected function getCache($key, $data)
+    {
+        $cache = Yii::$app->getCache();
+
+        if (!$cache instanceof Cache) {
+            if (is_callable($data)) {
+                return call_user_func($data);
+            }
+
+            return $data;
+        }
+
+        $key = get_called_class() . ':' . $key;
+
+        return $cache->getOrSet($key, $data);
     }
 }

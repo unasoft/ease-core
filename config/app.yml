@@ -58,8 +58,3 @@ components:
           categories: ['yii\web\HttpException:404']
           levels: ['error', 'warning']
           logFile: '@runtime/logs/404.log'
-
-
-
-
-

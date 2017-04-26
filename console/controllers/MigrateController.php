@@ -945,9 +945,7 @@ class MigrateController extends Controller
             foreach ($chunks as $i => &$chunk) {
                 if (strpos($chunk, 'foreignKey') === 0) {
                     preg_match('/foreignKey\((\w*)\)/', $chunk, $matches);
-                    $foreignKeys[$property] = isset($matches[1])
-                        ? $matches[1]
-                        : preg_replace('/_id$/', '', $property);
+                    $foreignKeys[$property] = $matches[1] ?? preg_replace('/_id$/', '', $property);
 
                     unset($chunks[$i]);
                     continue;
