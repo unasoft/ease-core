@@ -27,9 +27,9 @@ components:
             auto_reload: true
           globals:
             html:
-              class: \ej\helpers\Html
+              class: \ease\helpers\Html
             Url:
-              class: \ej\helpers\Url
+              class: \ease\helpers\Url
       theme:
         class: ej\base\Theme
         basePath: '@app/themes/Site'

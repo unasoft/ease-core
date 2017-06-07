@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\web;
+namespace ease\web;
 
 
 use Yii;
@@ -16,7 +16,7 @@ use yii\base\ViewContextInterface;
  * Class View
  *
  * @property Theme $theme
- * @method \ej\web\AssetManager      getAssetManager()
+ * @method \ease\web\AssetManager      getAssetManager()
  */
 class View extends \yii\web\View
 {

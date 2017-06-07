@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\base;
+namespace ease\base;
 
 
 class DynamicModel extends \yii\base\DynamicModel

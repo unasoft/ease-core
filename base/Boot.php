@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\base;
+namespace ease\base;
 
 
 use Yii;
@@ -31,23 +31,6 @@ class Boot extends Component
      * @var string
      */
     private $_cachePath;
-    /**
-     * @var array
-     */
-    private $_boots = [
-        'default' => [
-            '@ej/config/app.yml',
-            '@app/config/app.{yml,php}',
-            '@app/modules/*/registration.{yml,php}',
-            '@app/config/app-local.{yml,php}'
-        ],
-        'console' => [
-            '@ej/console/config/app.yml',
-            '@app/console/config/app.{yml,php}',
-            '@app/console/modules/*/registration.{yml,php}',
-            '@app/console/config/app-local.{yml,php}'
-        ]
-    ];
     /**
      * @var
      */
@@ -157,7 +140,7 @@ class Boot extends Component
      * @param string @class
      * @param array $config
      *
-     * @return \ej\web\Application|\ej\console\Application
+     * @return \ease\web\Application|\ease\console\Application
      * @throws InvalidConfigException
      */
     public function apply(string $class, array $config = [])

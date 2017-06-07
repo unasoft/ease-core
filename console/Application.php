@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\console;
+namespace ease\console;
 
 
 use Yii;
@@ -8,7 +8,7 @@ use yii\helpers\Console;
 
 class Application extends \yii\console\Application
 {
-    use \ej\traits\Application;
+    use \ease\traits\Application;
     /**
      * @var string
      */

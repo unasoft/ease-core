@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\web;
+namespace ease\web;
 
 defined('CODE_URL_TEST') || define('CODE_URL_TEST', false);
 
@@ -156,7 +156,7 @@ class UrlManager extends \yii\web\UrlManager
 
             try {
                 $this->site->switchSite($code);
-            } catch (\ej\exceptions\Site $e) {
+            } catch (\ease\exceptions\Site $e) {
                 return;
             }
 
@@ -374,7 +374,7 @@ class UrlManager extends \yii\web\UrlManager
         Yii::trace("Redirecting to $url.", __METHOD__);
         Yii::$app->getResponse()->redirect($url);
         if (CODE_URL_TEST) {
-            throw new \yii\base\Exception(\ej\helpers\Url::to($url));
+            throw new \yii\base\Exception(\ease\helpers\Url::to($url));
         } else {
             Yii::$app->end();
         }

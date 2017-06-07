@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\helpers;
+namespace ease\helpers;
 
 
 class Yaml extends \Symfony\Component\Yaml\Yaml

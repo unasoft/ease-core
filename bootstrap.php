@@ -3,9 +3,7 @@
  * bootstrap file.
  */
 
-use ej\helpers\FileHelper;
-
-defined('YII_ENV') or define('YII_ENV', 'prod');
+use ease\helpers\FileHelper;
 
 if (PHP_SAPI !== 'cli') {
     // Normalize how PHP's string methods (strtoupper, etc) behave.
@@ -36,17 +34,18 @@ if (defined('VENDOR_DIR')) {
 if (YII_ENV === 'dev' || PHP_SAPI === 'cli') {
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
+    defined('YII_ENV') or define('YII_ENV', 'dev');
     defined('YII_DEBUG') or define('YII_DEBUG', true);
 } else {
     error_reporting(0);
     ini_set('display_errors', 0);
+    defined('YII_ENV') or define('YII_ENV', 'prod');
     defined('YII_DEBUG') or define('YII_DEBUG', false);
 }
 
 require(__DIR__ . '/Yii.php');
 require(__DIR__ . '/functions.php');
 
-FileHelper::setAlias('@ej', __DIR__);
-FileHelper::setAlias('@app', dirname(VENDOR_DIR) . '/app');
+FileHelper::setAlias('@ease', __DIR__);
 FileHelper::setAlias('@vendor', VENDOR_DIR);
 FileHelper::setAlias('@protected', dirname(VENDOR_DIR));

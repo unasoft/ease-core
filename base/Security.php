@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\base;
+namespace ease\base;
 
 
 use yii\base\ErrorException;

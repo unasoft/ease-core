@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\db;
+namespace ease\db;
 
 use core\helpers\ArrayHelper;
 use yii\console\Exception;

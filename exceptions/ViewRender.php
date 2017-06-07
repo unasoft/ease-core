@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\exceptions;
+namespace ease\exceptions;
 
 
 use yii\base\Exception;

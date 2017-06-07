@@ -1,5 +1,5 @@
 {
-  "name": "ejsoft/ej-core",
+  "name": "ejsoft/core",
   "type": "project",
   "version": "1.0.0-dev",
   "keywords": [
@@ -9,12 +9,12 @@
   "minimum-stability": "dev",
   "prefer-stable": true,
   "require": {
-    "php": "~7.0.0",
+    "php": ">=7.0.0",
     "ext-mbstring": "*",
     "ext-openssl": "*",
     "ext-zip": "*",
     "ext-mcrypt": "*",
-    "yiisoft/yii2": "~2.0.11@stable",
+    "yiisoft/yii2": "~2.0.12@stable",
     "yiisoft/yii2-swiftmailer": "~2.0.0",
     "yiisoft/yii2-smarty": "~2.0.0",
     "yiisoft/yii2-twig": "~2.1.0",
@@ -27,17 +27,22 @@
     "symfony/process": "*",
     "samdark/sitemap": "*",
     "danielstjules/stringy": "*",
-    "longman/ip-tools": "*",
-    "bower-asset/requirejs": "~2.3.3"
+    "longman/ip-tools": "*"
   },
   "autoload": {
     "psr-4": {
-      "ej\\": ""
+      "ease\\": ""
     }
   },
   "extra": {
     "branch-alias": {
       "dev-master": "1.0.x-dev"
     }
-  }
+  },
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    }
+  ]
 }

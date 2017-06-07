@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\i18n;
+namespace ease\i18n;
 
 
 use Yii;

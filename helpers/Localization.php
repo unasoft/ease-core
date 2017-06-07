@@ -1,6 +1,6 @@
 <?php
 
-namespace core\helpers;
+namespace ease\helpers;
 
 use Yii;
 use core\i18n\Locale;

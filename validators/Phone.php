@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\validators;
+namespace ease\validators;
 
 
 use ej\helpers\Html;

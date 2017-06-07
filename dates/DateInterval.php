@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\dates;
+namespace ease\dates;
 
 
 class DateInterval extends \DateInterval

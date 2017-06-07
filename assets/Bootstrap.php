@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\assets;
+namespace ease\assets;
 
 
 use ej\web\AssetBundle;

@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\web;
+namespace ease\web;
 
 
 use ej\helpers\FileHelper;

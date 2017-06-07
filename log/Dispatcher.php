@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\log;
+namespace ease\log;
 
 
 class Dispatcher extends \yii\log\Dispatcher

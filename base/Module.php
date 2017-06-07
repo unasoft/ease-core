@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\base;
+namespace ease\base;
 
 
 abstract class Module extends \yii\base\Module

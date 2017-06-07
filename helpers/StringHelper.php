@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\helpers;
+namespace ease\helpers;
 
 
 class StringHelper extends \yii\helpers\StringHelper

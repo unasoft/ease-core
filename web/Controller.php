@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\web;
+namespace ease\web;
 
 
 use Yii;
@@ -9,7 +9,7 @@ use yii\web\Response;
 /**
  * Class Controller
  *
- * @method \ej\web\View getView()
+ * @method \ease\web\View getView()
  */
 class Controller extends \yii\web\Controller
 {

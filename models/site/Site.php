@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\models\site;
+namespace ease\models\site;
 
 
 use yii\db\ActiveRecord;

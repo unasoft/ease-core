@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\helpers;
+namespace ease\helpers;
 
 
 use libphonenumber\PhoneNumberUtil;

@@ -1,6 +1,6 @@
 <?php
 
-namespace ej\console\controllers;
+namespace ease\console\controllers;
 
 
 /**

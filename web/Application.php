@@ -1,11 +1,11 @@
 <?php
 
-namespace ej\web;
+namespace ease\web;
 
 
 class Application extends \yii\web\Application
 {
-    use \ej\traits\Application;
+    use \ease\traits\Application;
 
     /**
      * @return null|DeviceDetect
