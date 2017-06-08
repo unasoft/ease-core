@@ -1,4 +1,4 @@
-The ejCMS based on Yii2 framework is free software. It is released under the terms of
+The Ease CMS based on Yii2 framework is free software. It is released under the terms of
 the following BSD License.
 
 Copyright © 2016 by ejsoft (http://www.ejsoft.org)
